@@ -18,6 +18,29 @@ if [[ "$(uname)" != "Linux" ]]; then
 fi
 
 ARCH="$(dpkg --print-architecture)"  # amd64 or arm64
+DOTFILES_REPO="https://github.com/omr-lopay/omrdotfiles.git"
+DOTFILES_DIR="$HOME/omrdotfiles"
+
+############################################################
+step "Clone dotfiles repo"
+############################################################
+# If running from a transient location (e.g. /tmp via userdata),
+# clone the repo so symlinks have a persistent target.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [[ "$SCRIPT_DIR" == /tmp* ]]; then
+  if [[ -d "$DOTFILES_DIR/.git" ]]; then
+    git -C "$DOTFILES_DIR" pull --ff-only || true
+    ok "Dotfiles repo updated"
+  else
+    git clone "$DOTFILES_REPO" "$DOTFILES_DIR"
+    ok "Dotfiles repo cloned to $DOTFILES_DIR"
+  fi
+  SCRIPT_DIR="$DOTFILES_DIR"
+elif [[ -d "$SCRIPT_DIR/.git" ]]; then
+  DOTFILES_DIR="$SCRIPT_DIR"
+  ok "Running from repo at $SCRIPT_DIR"
+fi
 
 ############################################################
 step "apt packages"
@@ -36,7 +59,12 @@ sudo apt-get install -y \
   xclip \
   zsh-syntax-highlighting \
   pipx \
-  gpg
+  gpg \
+  build-essential \
+  tmux \
+  htop \
+  tree \
+  ripgrep
 
 # bat — binary is 'batcat' on Ubuntu, symlink to 'bat'
 sudo apt-get install -y bat || true
@@ -46,6 +74,37 @@ if command -v batcat >/dev/null 2>&1 && ! command -v bat >/dev/null 2>&1; then
 fi
 
 ok "apt packages installed"
+
+############################################################
+step "Docker"
+############################################################
+if ! command -v docker >/dev/null 2>&1; then
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+    | sudo gpg --dearmor --yes -o /usr/share/keyrings/docker-archive-keyring.gpg
+  echo "deb [arch=$ARCH signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+    | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+  sudo apt-get update -qq
+  sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  sudo usermod -aG docker "$USER"
+  ok "Docker installed"
+else
+  ok "Docker already installed"
+fi
+
+############################################################
+step "GitHub CLI"
+############################################################
+if ! command -v gh >/dev/null 2>&1; then
+  curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+  echo "deb [arch=$ARCH signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+    | sudo tee /etc/apt/sources.list.d/github-cli.list >/dev/null
+  sudo apt-get update -qq
+  sudo apt-get install -y gh
+  ok "GitHub CLI installed"
+else
+  ok "GitHub CLI already installed"
+fi
 
 ############################################################
 step "eza (modern ls)"
@@ -69,7 +128,6 @@ step "nvm + Node.js"
 ############################################################
 export NVM_DIR="$HOME/.nvm"
 if [[ ! -d "$NVM_DIR" ]]; then
-  # Fetch latest nvm release tag
   NVM_VERSION="$(curl -fsSL https://api.github.com/repos/nvm-sh/nvm/releases/latest | jq -r .tag_name)"
   curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" | bash
   ok "nvm $NVM_VERSION installed"
@@ -171,7 +229,6 @@ fi
 ############################################################
 step "Symlink dotfiles"
 ############################################################
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # .zshrc
 if [[ -f "$HOME/.zshrc" && ! -L "$HOME/.zshrc" ]]; then
@@ -181,11 +238,30 @@ fi
 ln -sf "$SCRIPT_DIR/.zshrc" "$HOME/.zshrc"
 ok "Linked .zshrc"
 
+# .tmux.conf
+if [[ -f "$HOME/.tmux.conf" && ! -L "$HOME/.tmux.conf" ]]; then
+  mv "$HOME/.tmux.conf" "$HOME/.tmux.conf.backup"
+fi
+ln -sf "$SCRIPT_DIR/.tmux.conf" "$HOME/.tmux.conf"
+ok "Linked .tmux.conf"
+
+# setup-repos.sh
+ln -sf "$SCRIPT_DIR/setup-repos.sh" "$HOME/setup-repos.sh"
+ok "Linked setup-repos.sh"
+
 # Claude settings
 mkdir -p "$HOME/.claude/statusline"
 ln -sf "$SCRIPT_DIR/claude/settings.json" "$HOME/.claude/settings.json"
 ln -sf "$SCRIPT_DIR/claude/statusline/ctx_monitor.js" "$HOME/.claude/statusline/ctx_monitor.js"
 ok "Linked Claude config"
+
+############################################################
+step "MOTD"
+############################################################
+sudo chmod -x /etc/update-motd.d/* 2>/dev/null || true
+sudo cp "$SCRIPT_DIR/motd.sh" /etc/update-motd.d/99-lopay
+sudo chmod +x /etc/update-motd.d/99-lopay
+ok "MOTD installed"
 
 ############################################################
 step "Set default shell to zsh"
