@@ -227,6 +227,21 @@ else
 fi
 
 ############################################################
+step "cloudflared"
+############################################################
+if ! command -v cloudflared >/dev/null 2>&1; then
+  curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg \
+    | sudo gpg --dearmor --yes -o /usr/share/keyrings/cloudflare-main.gpg
+  echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared $(lsb_release -cs) main" \
+    | sudo tee /etc/apt/sources.list.d/cloudflared.list >/dev/null
+  sudo apt-get update -qq
+  sudo apt-get install -y cloudflared
+  ok "cloudflared installed"
+else
+  ok "cloudflared already installed"
+fi
+
+############################################################
 step "localtunnel"
 ############################################################
 if ! command -v lt >/dev/null 2>&1; then
