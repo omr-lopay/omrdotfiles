@@ -154,6 +154,21 @@ else
 fi
 
 ############################################################
+step "ngrok"
+############################################################
+if ! command -v ngrok >/dev/null 2>&1; then
+  curl -fsSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
+    | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+  echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
+    | sudo tee /etc/apt/sources.list.d/ngrok.list >/dev/null
+  sudo apt-get update -qq
+  sudo apt-get install -y ngrok
+  ok "ngrok installed"
+else
+  ok "ngrok already installed"
+fi
+
+############################################################
 step "Symlink dotfiles"
 ############################################################
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
