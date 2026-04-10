@@ -143,7 +143,7 @@ copybranch() {
 
 # Guided connection to postgres (using pgcli)
 pgc() {
-  command -v pgcli >/dev/null 2>&1 || { echo "pgcli not found. pip install pgcli"; return 127; }
+  command -v pgcli >/dev/null 2>&1 || { echo "pgcli not found. pipx install pgcli"; return 127; }
 
   local host port user db pass
   read -r "host?Host [localhost]: "

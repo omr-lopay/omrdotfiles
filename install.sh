@@ -2,7 +2,6 @@
 set -euo pipefail
 
 BOLD="\033[1m"
-DIM="\033[2m"
 GREEN="\033[32m"
 CYAN="\033[36m"
 RED="\033[31m"
@@ -18,12 +17,13 @@ if [[ "$(uname)" != "Linux" ]]; then
   exit 1
 fi
 
+ARCH="$(dpkg --print-architecture)"  # amd64 or arm64
+
 ############################################################
 step "apt packages"
 ############################################################
 sudo apt-get update -qq
 
-# Core tools
 sudo apt-get install -y \
   zsh \
   git \
@@ -35,12 +35,13 @@ sudo apt-get install -y \
   fzf \
   xclip \
   zsh-syntax-highlighting \
-  python3-pip
+  pipx \
+  gpg
 
-# bat (binary is 'batcat' on Ubuntu — symlink to 'bat')
+# bat — binary is 'batcat' on Ubuntu, symlink to 'bat'
 sudo apt-get install -y bat || true
 if command -v batcat >/dev/null 2>&1 && ! command -v bat >/dev/null 2>&1; then
-  sudo ln -sf "$(which batcat)" /usr/local/bin/bat
+  sudo ln -sf "$(command -v batcat)" /usr/local/bin/bat
   ok "Symlinked batcat -> bat"
 fi
 
@@ -51,8 +52,10 @@ step "eza (modern ls)"
 ############################################################
 if ! command -v eza >/dev/null 2>&1; then
   sudo mkdir -p /etc/apt/keyrings
-  wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc | sudo gpg --dearmor -o /etc/apt/keyrings/gierens.gpg
-  echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" | sudo tee /etc/apt/sources.list.d/gierens.list
+  wget -qO- https://raw.githubusercontent.com/eza-community/eza/main/deb.asc \
+    | sudo gpg --dearmor --yes -o /etc/apt/keyrings/gierens.gpg
+  echo "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://deb.gierens.de stable main" \
+    | sudo tee /etc/apt/sources.list.d/gierens.list >/dev/null
   sudo chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
   sudo apt-get update -qq
   sudo apt-get install -y eza
@@ -66,13 +69,15 @@ step "nvm + Node.js"
 ############################################################
 export NVM_DIR="$HOME/.nvm"
 if [[ ! -d "$NVM_DIR" ]]; then
-  curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
-  ok "nvm installed"
+  # Fetch latest nvm release tag
+  NVM_VERSION="$(curl -fsSL https://api.github.com/repos/nvm-sh/nvm/releases/latest | jq -r .tag_name)"
+  curl -o- "https://raw.githubusercontent.com/nvm-sh/nvm/${NVM_VERSION}/install.sh" | bash
+  ok "nvm $NVM_VERSION installed"
 else
   ok "nvm already installed"
 fi
 
-# Load nvm and install latest LTS
+# shellcheck source=/dev/null
 source "$NVM_DIR/nvm.sh"
 nvm install --lts
 ok "Node.js LTS installed: $(node --version)"
@@ -91,7 +96,7 @@ fi
 step "pgcli"
 ############################################################
 if ! command -v pgcli >/dev/null 2>&1; then
-  pip install --user pgcli
+  pipx install pgcli
   ok "pgcli installed"
 else
   ok "pgcli already installed"
@@ -101,22 +106,32 @@ fi
 step "AWS CLI"
 ############################################################
 if ! command -v aws >/dev/null 2>&1; then
+  if [[ "$ARCH" == "arm64" ]]; then
+    AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-aarch64.zip"
+  else
+    AWS_URL="https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
+  fi
   cd /tmp
-  curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o awscliv2.zip
+  curl -fsSL "$AWS_URL" -o awscliv2.zip
   unzip -qo awscliv2.zip
   sudo ./aws/install
   rm -rf awscliv2.zip aws
   ok "AWS CLI installed"
 else
-  ok "AWS CLI already installed: $(aws --version)"
+  ok "AWS CLI already installed: $(aws --version 2>&1)"
 fi
 
 ############################################################
 step "AWS Session Manager Plugin"
 ############################################################
 if ! command -v session-manager-plugin >/dev/null 2>&1; then
+  if [[ "$ARCH" == "arm64" ]]; then
+    SSM_URL="https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_arm64/session-manager-plugin.deb"
+  else
+    SSM_URL="https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb"
+  fi
   cd /tmp
-  curl -fsSL "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb" -o session-manager-plugin.deb
+  curl -fsSL "$SSM_URL" -o session-manager-plugin.deb
   sudo dpkg -i session-manager-plugin.deb
   rm -f session-manager-plugin.deb
   ok "Session Manager Plugin installed"
