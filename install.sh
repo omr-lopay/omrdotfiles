@@ -227,6 +227,16 @@ else
 fi
 
 ############################################################
+step "localtunnel"
+############################################################
+if ! command -v lt >/dev/null 2>&1; then
+  npm install -g localtunnel
+  ok "localtunnel installed"
+else
+  ok "localtunnel already installed"
+fi
+
+############################################################
 step "Symlink dotfiles"
 ############################################################
 
