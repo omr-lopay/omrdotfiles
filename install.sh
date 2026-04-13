@@ -269,11 +269,20 @@ ok "Linked Claude config"
 ############################################################
 step "MOTD"
 ############################################################
-sudo chmod -x /etc/update-motd.d/* 2>/dev/null || true
+# Move all default MOTD scripts out of the way
+sudo mkdir -p /etc/update-motd.d.bak
+sudo mv /etc/update-motd.d/[0-9]* /etc/update-motd.d.bak/ 2>/dev/null || true
+# Install ours as the only script
 sudo cp "$SCRIPT_DIR/motd.sh" /etc/update-motd.d/99-lopay
 sudo chmod +x /etc/update-motd.d/99-lopay
-# Suppress Ubuntu's default legal notice
+# Suppress all other Ubuntu MOTD sources
 sudo truncate -s 0 /etc/legal 2>/dev/null || true
+sudo truncate -s 0 /etc/motd 2>/dev/null || true
+sudo truncate -s 0 /run/motd.dynamic 2>/dev/null || true
+# Disable motd-news fetcher
+sudo sed -i 's/^ENABLED=.*/ENABLED=0/' /etc/default/motd-news 2>/dev/null || true
+# Disable landscape sysinfo
+sudo chmod -x /usr/bin/landscape-sysinfo 2>/dev/null || true
 ok "MOTD installed"
 
 ############################################################
