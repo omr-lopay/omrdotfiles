@@ -208,7 +208,92 @@ else
 fi
 
 ############################################################
-sloth_progress 60 "Linking dotfiles"
+sloth_progress 48 "Installing PostgreSQL"
+step "PostgreSQL 16"
+############################################################
+if ! command -v psql >/dev/null 2>&1; then
+  sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+  wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/pgdg.asc >/dev/null
+  sudo apt-get update -qq
+  sudo apt-get install -y postgresql-16
+  ok "PostgreSQL 16 installed"
+else
+  ok "PostgreSQL already installed"
+fi
+
+# Configure: create lopay user and databases
+if sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='lopay'" | grep -q 1; then
+  ok "PostgreSQL user 'lopay' already exists"
+else
+  sudo -u postgres psql -c "CREATE USER lopay WITH PASSWORD 'lopay' CREATEDB;"
+  ok "PostgreSQL user 'lopay' created"
+fi
+
+sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='lopay_local_db'" | grep -q 1 \
+  || sudo -u postgres psql -c "CREATE DATABASE lopay_local_db OWNER lopay;"
+sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='test-db'" | grep -q 1 \
+  || sudo -u postgres psql -c "CREATE DATABASE \"test-db\" OWNER lopay;"
+ok "PostgreSQL databases ready"
+
+############################################################
+sloth_progress 52 "Installing Redis"
+step "Redis"
+############################################################
+if ! command -v redis-server >/dev/null 2>&1; then
+  sudo apt-get install -y redis-server
+  ok "Redis installed"
+else
+  ok "Redis already installed"
+fi
+
+# Configure password
+if ! grep -q "^requirepass lopay" /etc/redis/redis.conf 2>/dev/null; then
+  sudo sed -i 's/^# *requirepass.*/requirepass lopay/' /etc/redis/redis.conf
+  sudo systemctl restart redis-server
+  ok "Redis password configured"
+else
+  ok "Redis already configured"
+fi
+
+############################################################
+sloth_progress 55 "Installing RabbitMQ"
+step "RabbitMQ"
+############################################################
+if ! command -v rabbitmqctl >/dev/null 2>&1; then
+  sudo apt-get install -y rabbitmq-server
+  ok "RabbitMQ installed"
+else
+  ok "RabbitMQ already installed"
+fi
+
+# Configure user
+if sudo rabbitmqctl list_users | grep -q lopay; then
+  ok "RabbitMQ user 'lopay' already exists"
+else
+  sudo rabbitmqctl add_user lopay lopay
+  sudo rabbitmqctl set_permissions -p / lopay ".*" ".*" ".*"
+  sudo rabbitmqctl set_user_tags lopay administrator
+  ok "RabbitMQ user 'lopay' created"
+fi
+
+############################################################
+sloth_progress 57 "Installing Stripe CLI"
+step "Stripe CLI"
+############################################################
+if ! command -v stripe >/dev/null 2>&1; then
+  curl -fsSL https://packages.stripe.dev/api/security/keypair/stripe-cli-gpg/public | \
+    sudo gpg --dearmor --yes -o /usr/share/keyrings/stripe.gpg
+  echo "deb [signed-by=/usr/share/keyrings/stripe.gpg] https://packages.stripe.dev/stripe-cli-debian-local stable main" | \
+    sudo tee /etc/apt/sources.list.d/stripe.list >/dev/null
+  sudo apt-get update -qq
+  sudo apt-get install -y stripe
+  ok "Stripe CLI installed"
+else
+  ok "Stripe CLI already installed"
+fi
+
+############################################################
+sloth_progress 59 "Linking dotfiles"
 step "Symlink dotfiles"
 ############################################################
 
@@ -246,7 +331,7 @@ ln -sf "$SCRIPT_DIR/claude/statusline/ctx_monitor.js" "$HOME/.claude/statusline/
 ok "Linked Claude config"
 
 ############################################################
-sloth_progress 62 "Configuring shell"
+sloth_progress 61 "Configuring shell"
 step "Disable Ubuntu default MOTD"
 ############################################################
 # Disable PAM motd entirely (the source of all default MOTD output)
@@ -265,7 +350,7 @@ sudo sed -i 's/^ENABLED=.*/ENABLED=0/' /etc/default/motd-news 2>/dev/null || tru
 ok "Ubuntu default MOTD disabled"
 
 ############################################################
-sloth_progress 64 "Configuring SSH"
+sloth_progress 63 "Configuring SSH"
 step "SSH config for GitHub"
 ############################################################
 SSH_CONFIG="$HOME/.ssh/config"
