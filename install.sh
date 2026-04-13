@@ -12,6 +12,14 @@ ok()    { printf "${GREEN}::${RESET} %s\n" "$*"; }
 warn()  { printf "${RED}::${RESET} %s\n" "$*"; }
 step()  { printf "\n${BOLD}%s${RESET}\n" "$*"; }
 
+# Emit progress tags if running inside a sloth instance
+sloth_progress() {
+  if [[ -n "${SLOTH_INSTANCE_ID:-}" && -n "${SLOTH_REGION:-}" ]] && command -v aws >/dev/null 2>&1; then
+    aws ec2 create-tags --resources "$SLOTH_INSTANCE_ID" --region "$SLOTH_REGION" \
+      --tags "Key=sloth:progress,Value=$1" "Key=sloth:status,Value=$2" 2>/dev/null || true
+  fi
+}
+
 if [[ "$(uname)" != "Linux" ]]; then
   warn "This script is intended for Ubuntu/Debian. Exiting."
   exit 1
@@ -22,6 +30,7 @@ DOTFILES_REPO="https://github.com/omr-lopay/omrdotfiles.git"
 DOTFILES_DIR="$HOME/omrdotfiles"
 
 ############################################################
+sloth_progress 5 "Cloning dotfiles"
 step "Clone dotfiles repo"
 ############################################################
 # If running from a transient location (e.g. /tmp via userdata),
@@ -43,6 +52,7 @@ elif [[ -d "$SCRIPT_DIR/.git" ]]; then
 fi
 
 ############################################################
+sloth_progress 8 "Installing apt packages"
 step "apt packages"
 ############################################################
 sudo apt-get update -qq
@@ -76,6 +86,7 @@ fi
 ok "apt packages installed"
 
 ############################################################
+sloth_progress 15 "Installing Docker"
 step "Docker"
 ############################################################
 if ! command -v docker >/dev/null 2>&1; then
@@ -92,6 +103,7 @@ else
 fi
 
 ############################################################
+sloth_progress 22 "Installing GitHub CLI"
 step "GitHub CLI"
 ############################################################
 if ! command -v gh >/dev/null 2>&1; then
@@ -107,6 +119,7 @@ else
 fi
 
 ############################################################
+sloth_progress 26 "Installing eza"
 step "eza (modern ls)"
 ############################################################
 if ! command -v eza >/dev/null 2>&1; then
@@ -124,6 +137,7 @@ else
 fi
 
 ############################################################
+sloth_progress 30 "Installing Node.js"
 step "nvm + Node.js"
 ############################################################
 export NVM_DIR="$HOME/.nvm"
@@ -141,6 +155,7 @@ nvm install --lts
 ok "Node.js LTS installed: $(node --version)"
 
 ############################################################
+sloth_progress 36 "Installing pnpm"
 step "pnpm"
 ############################################################
 if ! command -v pnpm >/dev/null 2>&1; then
@@ -151,6 +166,7 @@ else
 fi
 
 ############################################################
+sloth_progress 38 "Installing pgcli"
 step "pgcli"
 ############################################################
 if ! command -v pgcli >/dev/null 2>&1; then
@@ -161,6 +177,7 @@ else
 fi
 
 ############################################################
+sloth_progress 40 "Installing AWS CLI"
 step "AWS CLI"
 ############################################################
 if ! command -v aws >/dev/null 2>&1; then
@@ -180,6 +197,7 @@ else
 fi
 
 ############################################################
+sloth_progress 45 "Installing Google Cloud SDK"
 step "Google Cloud SDK"
 ############################################################
 if ! command -v gcloud >/dev/null 2>&1; then
@@ -194,6 +212,7 @@ else
 fi
 
 ############################################################
+sloth_progress 50 "Installing ngrok"
 step "ngrok"
 ############################################################
 if ! command -v ngrok >/dev/null 2>&1; then
@@ -209,6 +228,7 @@ else
 fi
 
 ############################################################
+sloth_progress 53 "Installing cloudflared"
 step "cloudflared"
 ############################################################
 if ! command -v cloudflared >/dev/null 2>&1; then
@@ -224,6 +244,7 @@ else
 fi
 
 ############################################################
+sloth_progress 56 "Installing localtunnel"
 step "localtunnel"
 ############################################################
 if ! command -v lt >/dev/null 2>&1; then
@@ -234,6 +255,7 @@ else
 fi
 
 ############################################################
+sloth_progress 58 "Linking dotfiles"
 step "Symlink dotfiles"
 ############################################################
 
@@ -271,6 +293,7 @@ ln -sf "$SCRIPT_DIR/claude/statusline/ctx_monitor.js" "$HOME/.claude/statusline/
 ok "Linked Claude config"
 
 ############################################################
+sloth_progress 60 "Configuring shell"
 step "Disable Ubuntu default MOTD"
 ############################################################
 # Disable PAM motd entirely (the source of all default MOTD output)
@@ -289,6 +312,7 @@ sudo sed -i 's/^ENABLED=.*/ENABLED=0/' /etc/default/motd-news 2>/dev/null || tru
 ok "Ubuntu default MOTD disabled"
 
 ############################################################
+sloth_progress 62 "Configuring SSH"
 step "SSH config for GitHub"
 ############################################################
 SSH_CONFIG="$HOME/.ssh/config"
@@ -313,6 +337,7 @@ else
 fi
 
 ############################################################
+sloth_progress 63 "Setting default shell"
 step "Set default shell to zsh"
 ############################################################
 if [[ "$SHELL" != "$(which zsh)" ]]; then
