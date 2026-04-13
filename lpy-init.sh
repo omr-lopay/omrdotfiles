@@ -108,7 +108,7 @@ else
   # Try to pull from GitHub if authenticated
   if _init_has_gh_auth; then
     _git_name="$(gh api user --jq '.name // empty' 2>/dev/null)"
-    _git_email="$(gh api user/emails --jq '[.[] | select(.primary)][0].email // empty' 2>/dev/null)"
+    _git_email="$(gh api user --jq '.email // empty' 2>/dev/null)"
 
     if [[ -n "$_git_name" && -n "$_git_email" ]]; then
       printf "        ${_DIM}Found from your GitHub account:${_RESET}\n"

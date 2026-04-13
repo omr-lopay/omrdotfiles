@@ -289,10 +289,15 @@ sudo sed -i 's/^ENABLED=.*/ENABLED=0/' /etc/default/motd-news 2>/dev/null || tru
 ok "Ubuntu default MOTD disabled"
 
 ############################################################
-step "SSH config for GitHub org"
+step "SSH config for GitHub"
 ############################################################
 SSH_CONFIG="$HOME/.ssh/config"
 mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+
+# Pre-seed GitHub's SSH host keys so git clone never prompts
+ssh-keyscan -t ed25519,rsa github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null || true
+ok "GitHub host keys added to known_hosts"
+
 if ! grep -q "Host org-109216428.github.com" "$SSH_CONFIG" 2>/dev/null; then
   cat >> "$SSH_CONFIG" <<'SSHEOF'
 
