@@ -12,11 +12,11 @@ ok()    { printf "${GREEN}::${RESET} %s\n" "$*"; }
 warn()  { printf "${RED}::${RESET} %s\n" "$*"; }
 step()  { printf "\n${BOLD}%s${RESET}\n" "$*"; }
 
-# Emit progress tags if running inside a sloth instance
+# Write progress to a file for the userdata progress watcher to pick up
+SLOTH_PROGRESS_FILE="${SLOTH_PROGRESS_FILE:-}"
 sloth_progress() {
-  if [[ -n "${SLOTH_INSTANCE_ID:-}" && -n "${SLOTH_REGION:-}" ]] && command -v aws >/dev/null 2>&1; then
-    aws ec2 create-tags --resources "$SLOTH_INSTANCE_ID" --region "$SLOTH_REGION" \
-      --tags "Key=sloth:progress,Value=$1" "Key=sloth:status,Value=$2" 2>/dev/null || true
+  if [[ -n "$SLOTH_PROGRESS_FILE" ]]; then
+    echo "$1 $2" > "$SLOTH_PROGRESS_FILE"
   fi
 }
 
