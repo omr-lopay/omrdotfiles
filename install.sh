@@ -180,24 +180,6 @@ else
 fi
 
 ############################################################
-step "AWS Session Manager Plugin"
-############################################################
-if ! command -v session-manager-plugin >/dev/null 2>&1; then
-  if [[ "$ARCH" == "arm64" ]]; then
-    SSM_URL="https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_arm64/session-manager-plugin.deb"
-  else
-    SSM_URL="https://s3.amazonaws.com/session-manager-downloads/plugin/latest/ubuntu_64bit/session-manager-plugin.deb"
-  fi
-  cd /tmp
-  curl -fsSL "$SSM_URL" -o session-manager-plugin.deb
-  sudo dpkg -i session-manager-plugin.deb
-  rm -f session-manager-plugin.deb
-  ok "Session Manager Plugin installed"
-else
-  ok "Session Manager Plugin already installed"
-fi
-
-############################################################
 step "Google Cloud SDK"
 ############################################################
 if ! command -v gcloud >/dev/null 2>&1; then
@@ -274,6 +256,10 @@ ok "Linked .tmux.conf"
 ln -sf "$SCRIPT_DIR/setup-repos.sh" "$HOME/setup-repos.sh"
 ok "Linked setup-repos.sh"
 
+# lpy-init.sh
+ln -sf "$SCRIPT_DIR/lpy-init.sh" "$HOME/lpy-init.sh"
+ok "Linked lpy-init.sh"
+
 # Claude settings
 mkdir -p "$HOME/.claude/statusline"
 ln -sf "$SCRIPT_DIR/claude/settings.json" "$HOME/.claude/settings.json"
@@ -287,6 +273,25 @@ sudo chmod -x /etc/update-motd.d/* 2>/dev/null || true
 sudo cp "$SCRIPT_DIR/motd.sh" /etc/update-motd.d/99-lopay
 sudo chmod +x /etc/update-motd.d/99-lopay
 ok "MOTD installed"
+
+############################################################
+step "SSH config for GitHub org"
+############################################################
+SSH_CONFIG="$HOME/.ssh/config"
+mkdir -p "$HOME/.ssh" && chmod 700 "$HOME/.ssh"
+if ! grep -q "Host org-109216428.github.com" "$SSH_CONFIG" 2>/dev/null; then
+  cat >> "$SSH_CONFIG" <<'SSHEOF'
+
+Host org-109216428.github.com
+  HostName github.com
+  User git
+  IdentityFile ~/.ssh/id_ed25519
+SSHEOF
+  chmod 600 "$SSH_CONFIG"
+  ok "SSH config written for org-109216428.github.com"
+else
+  ok "SSH config already has org-109216428.github.com entry"
+fi
 
 ############################################################
 step "Set default shell to zsh"

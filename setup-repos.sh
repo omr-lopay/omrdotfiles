@@ -1,10 +1,31 @@
 #!/bin/bash
 set -euo pipefail
 
-mkdir -p ~/code
-cd ~/code
+BOLD="\033[1m"
+GREEN="\033[32m"
+DIM="\033[2m"
+RESET="\033[0m"
 
-echo "Cloning repositories..."
-git clone git@org-109216428.github.com:lopay-limited/lopay-api.git
+REPOS_DIR="$HOME/code"
+mkdir -p "$REPOS_DIR"
 
-echo "Done! Your repos are ready in ~/code"
+clone_or_update() {
+  local url="$1"
+  local name="${url##*/}"
+  name="${name%.git}"
+  local dest="$REPOS_DIR/$name"
+
+  if [[ -d "$dest/.git" ]]; then
+    printf "  ${DIM}Already cloned: %s — pulling latest${RESET}\n" "$name"
+    git -C "$dest" pull --ff-only --quiet || true
+  else
+    printf "  Cloning %s...\n" "$name"
+    git clone "$url" "$dest"
+  fi
+}
+
+printf "\n${BOLD}Cloning Lopay repos into ~/code/${RESET}\n\n"
+
+clone_or_update "git@org-109216428.github.com:lopay-limited/lopay-api.git"
+
+printf "\n${GREEN}Done.${RESET} Repos are in ~/code/\n\n"
