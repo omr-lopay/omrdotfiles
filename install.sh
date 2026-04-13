@@ -260,6 +260,10 @@ ok "Linked setup-repos.sh"
 ln -sf "$SCRIPT_DIR/lpy-init.sh" "$HOME/lpy-init.sh"
 ok "Linked lpy-init.sh"
 
+# motd.sh
+ln -sf "$SCRIPT_DIR/motd.sh" "$HOME/motd.sh"
+ok "Linked motd.sh"
+
 # Claude settings
 mkdir -p "$HOME/.claude/statusline"
 ln -sf "$SCRIPT_DIR/claude/settings.json" "$HOME/.claude/settings.json"
@@ -267,23 +271,22 @@ ln -sf "$SCRIPT_DIR/claude/statusline/ctx_monitor.js" "$HOME/.claude/statusline/
 ok "Linked Claude config"
 
 ############################################################
-step "MOTD"
+step "Disable Ubuntu default MOTD"
 ############################################################
-# Move all default MOTD scripts out of the way
-sudo mkdir -p /etc/update-motd.d.bak
-sudo mv /etc/update-motd.d/[0-9]* /etc/update-motd.d.bak/ 2>/dev/null || true
-# Install ours as the only script
-sudo cp "$SCRIPT_DIR/motd.sh" /etc/update-motd.d/99-lopay
-sudo chmod +x /etc/update-motd.d/99-lopay
-# Suppress all other Ubuntu MOTD sources
+# Disable PAM motd entirely (the source of all default MOTD output)
+sudo sed -i '/pam_motd/s/^/#/' /etc/pam.d/sshd 2>/dev/null || true
+# Disable PrintMotd in sshd (shows /etc/motd)
+sudo sed -i 's/^#\?PrintMotd.*/PrintMotd no/' /etc/ssh/sshd_config 2>/dev/null || true
+# Also disable PrintLastLog to keep login clean
+sudo sed -i 's/^#\?PrintLastLog.*/PrintLastLog no/' /etc/ssh/sshd_config 2>/dev/null || true
+# Clear any cached/static motd files
 sudo truncate -s 0 /etc/legal 2>/dev/null || true
 sudo truncate -s 0 /etc/motd 2>/dev/null || true
 sudo truncate -s 0 /run/motd.dynamic 2>/dev/null || true
 # Disable motd-news fetcher
 sudo sed -i 's/^ENABLED=.*/ENABLED=0/' /etc/default/motd-news 2>/dev/null || true
-# Disable landscape sysinfo
-sudo chmod -x /usr/bin/landscape-sysinfo 2>/dev/null || true
-ok "MOTD installed"
+# Our MOTD is shown from .zshrc instead
+ok "Ubuntu default MOTD disabled"
 
 ############################################################
 step "SSH config for GitHub org"

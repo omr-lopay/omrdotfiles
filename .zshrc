@@ -531,8 +531,11 @@ case ":$PATH:" in
 esac
 
 ############################################################
-# First-login auto-trigger
+# MOTD + first-login auto-trigger
 ############################################################
-if [[ ! -f "$HOME/.lpy-init-done" ]] && [[ -o interactive ]]; then
-  lpy init
+if [[ -o interactive ]]; then
+  source "$HOME/motd.sh" 2>/dev/null
+  if [[ ! -f "$HOME/.lpy-init-done" ]]; then
+    lpy init
+  fi
 fi

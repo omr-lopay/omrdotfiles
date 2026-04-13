@@ -1,81 +1,62 @@
-#!/bin/bash
-# Dynamic MOTD — shows setup checklist on login
-# Installed to /etc/update-motd.d/99-lopay (runs as root)
+#!/usr/bin/env zsh
+# MOTD — sourced from .zshrc on interactive login
 
-PURPLE="\033[38;2;113;124;188m"
-GREEN="\033[32m"
-RED="\033[31m"
-BOLD="\033[1m"
-DIM="\033[2m"
-RESET="\033[0m"
+_MOTD_PURPLE="\033[38;2;113;124;188m"
+_MOTD_GREEN="\033[32m"
+_MOTD_RED="\033[31m"
+_MOTD_BOLD="\033[1m"
+_MOTD_RESET="\033[0m"
 
-CHECK="${GREEN}✓${RESET}"
-CROSS="${RED}✗${RESET}"
-
-# MOTD scripts run as root — target the login user's home
-USER_HOME="/home/ubuntu"
+_MOTD_CHECK="${_MOTD_GREEN}✓${_MOTD_RESET}"
+_MOTD_CROSS="${_MOTD_RED}✗${_MOTD_RESET}"
 
 # ── banner ─────────────────────────────────────────────────
 
 echo ''
-printf "${PURPLE}"
+printf "${_MOTD_PURPLE}"
 echo '__         ______     ______   ______     __  __    '
 echo '/\ \       /\  __ \   /\  == \ /\  __ \   /\ \_\ \   '
 echo '\ \ \____  \ \ \/\ \  \ \  _-/ \ \  __ \  \ \____ \  '
 echo ' \ \_____\  \ \_____\  \ \_\    \ \_\ \_\  \/\_____\ '
 echo '  \/_____/   \/_____/   \/_/     \/_/\/_/   \/_____/ '
-printf "${RESET}"
+printf "${_MOTD_RESET}"
 echo ''
 
-# ── first login — wizard will auto-trigger, just show banner ─
+# ── first login — wizard handles everything, just show banner ─
 
-if [[ ! -f "$USER_HOME/.lpy-init-done" ]]; then
-  exit 0
-fi
+[[ ! -f "$HOME/.lpy-init-done" ]] && return 0
 
-# ── subsequent logins — show checklist ─────────────────────
+# ── subsequent logins — show checklist if incomplete ──────
 
-check_git_identity() {
-  local name email
-  name="$(sudo -u ubuntu git config --global user.name 2>/dev/null)"
-  email="$(sudo -u ubuntu git config --global user.email 2>/dev/null)"
-  [[ -n "$name" && -n "$email" ]]
-}
+local _motd_git_ok=false _motd_ssh_ok=false _motd_gh_ok=false _motd_repos_ok=false
 
-check_github_ssh() {
-  [[ -f "$USER_HOME/.ssh/.github_verified" ]]
-}
+# Git identity
+local _n _e
+_n="$(git config --global user.name 2>/dev/null)"
+_e="$(git config --global user.email 2>/dev/null)"
+[[ -n "$_n" && -n "$_e" ]] && _motd_git_ok=true
 
-check_gh_auth() {
-  sudo -u ubuntu bash -c 'gh auth status' >/dev/null 2>&1
-}
+# SSH key verified
+[[ -f "$HOME/.ssh/.github_verified" ]] && _motd_ssh_ok=true
 
-check_repos() {
-  [[ -d "$USER_HOME/code/lopay-api/.git" ]]
-}
+# gh auth
+gh auth status >/dev/null 2>&1 && _motd_gh_ok=true
 
-git_ok=false;   check_git_identity && git_ok=true
-ssh_ok=false;   check_github_ssh   && ssh_ok=true
-gh_ok=false;    check_gh_auth      && gh_ok=true
-repos_ok=false; check_repos        && repos_ok=true
+# Repos
+[[ -d "$HOME/code/lopay-api/.git" ]] && _motd_repos_ok=true
 
-all_done=true
-for v in $git_ok $ssh_ok $gh_ok $repos_ok; do
-  [[ "$v" == "false" ]] && all_done=false && break
-done
-
-if $all_done; then
-  printf "  ${GREEN}${BOLD}All set.${RESET} Happy coding!\n"
+if $_motd_git_ok && $_motd_ssh_ok && $_motd_gh_ok && $_motd_repos_ok; then
+  printf "  ${_MOTD_GREEN}${_MOTD_BOLD}All set.${_MOTD_RESET} Happy coding!\n"
   echo ''
-  exit 0
+  return 0
 fi
 
 printf "  Setup checklist:\n\n"
 
-$gh_ok   && printf "  ${CHECK}  GitHub authenticated\n"     || printf "  ${CROSS}  GitHub not authenticated\n"
-$ssh_ok  && printf "  ${CHECK}  SSH key on GitHub\n"       || printf "  ${CROSS}  SSH key not on GitHub\n"
-$git_ok  && printf "  ${CHECK}  Git identity configured\n" || printf "  ${CROSS}  Git identity not set\n"
-$repos_ok && printf "  ${CHECK}  Repos cloned\n"            || printf "  ${CROSS}  Repos not cloned\n"
+$_motd_gh_ok   && printf "  ${_MOTD_CHECK}  GitHub authenticated\n"     || printf "  ${_MOTD_CROSS}  GitHub not authenticated\n"
+$_motd_ssh_ok  && printf "  ${_MOTD_CHECK}  SSH key on GitHub\n"       || printf "  ${_MOTD_CROSS}  SSH key not on GitHub\n"
+$_motd_git_ok  && printf "  ${_MOTD_CHECK}  Git identity configured\n" || printf "  ${_MOTD_CROSS}  Git identity not set\n"
+$_motd_repos_ok && printf "  ${_MOTD_CHECK}  Repos cloned\n"            || printf "  ${_MOTD_CROSS}  Repos not cloned\n"
 
-printf "\n  Run ${BOLD}lpy init${RESET} to finish setup.\n"
+printf "\n  Run ${_MOTD_BOLD}lpy init${_MOTD_RESET} to finish setup.\n"
 echo ''
