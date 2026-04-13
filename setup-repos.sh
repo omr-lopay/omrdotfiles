@@ -26,6 +26,6 @@ clone_or_update() {
 
 printf "\n${BOLD}Cloning Lopay repos into ~/code/${RESET}\n\n"
 
-clone_or_update "git@org-109216428.github.com:lopay-limited/lopay-api.git"
+clone_or_update "https://github.com/lopay-limited/lopay-api.git"
 
 printf "\n${GREEN}Done.${RESET} Repos are in ~/code/\n\n"
