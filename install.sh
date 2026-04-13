@@ -30,7 +30,7 @@ DOTFILES_REPO="https://github.com/omr-lopay/omrdotfiles.git"
 DOTFILES_DIR="$HOME/omrdotfiles"
 
 ############################################################
-sloth_progress 5 "Cloning dotfiles"
+sloth_progress 5 "Cloning dotfiles repo"
 step "Clone dotfiles repo"
 ############################################################
 # If running from a transient location (e.g. /tmp via userdata),
@@ -52,7 +52,7 @@ elif [[ -d "$SCRIPT_DIR/.git" ]]; then
 fi
 
 ############################################################
-sloth_progress 8 "Installing apt packages"
+sloth_progress 8 "Installing system packages"
 step "apt packages"
 ############################################################
 sudo apt-get update -qq
@@ -86,7 +86,7 @@ fi
 ok "apt packages installed"
 
 ############################################################
-sloth_progress 15 "Installing Docker"
+sloth_progress 18 "Installing Docker"
 step "Docker"
 ############################################################
 if ! command -v docker >/dev/null 2>&1; then
@@ -103,7 +103,7 @@ else
 fi
 
 ############################################################
-sloth_progress 22 "Installing GitHub CLI"
+sloth_progress 28 "Installing GitHub CLI"
 step "GitHub CLI"
 ############################################################
 if ! command -v gh >/dev/null 2>&1; then
@@ -119,7 +119,7 @@ else
 fi
 
 ############################################################
-sloth_progress 26 "Installing eza"
+sloth_progress 33 "Installing eza"
 step "eza (modern ls)"
 ############################################################
 if ! command -v eza >/dev/null 2>&1; then
@@ -137,7 +137,7 @@ else
 fi
 
 ############################################################
-sloth_progress 30 "Installing Node.js"
+sloth_progress 38 "Installing Node.js"
 step "nvm + Node.js"
 ############################################################
 export NVM_DIR="$HOME/.nvm"
@@ -155,7 +155,7 @@ nvm install --lts
 ok "Node.js LTS installed: $(node --version)"
 
 ############################################################
-sloth_progress 36 "Installing pnpm"
+sloth_progress 46 "Installing pnpm"
 step "pnpm"
 ############################################################
 if ! command -v pnpm >/dev/null 2>&1; then
@@ -166,7 +166,7 @@ else
 fi
 
 ############################################################
-sloth_progress 38 "Installing pgcli"
+sloth_progress 50 "Installing pgcli"
 step "pgcli"
 ############################################################
 if ! command -v pgcli >/dev/null 2>&1; then
@@ -177,7 +177,7 @@ else
 fi
 
 ############################################################
-sloth_progress 40 "Installing AWS CLI"
+sloth_progress 54 "Installing AWS CLI"
 step "AWS CLI"
 ############################################################
 if ! command -v aws >/dev/null 2>&1; then
@@ -197,54 +197,7 @@ else
 fi
 
 ############################################################
-sloth_progress 45 "Installing Google Cloud SDK"
-step "Google Cloud SDK"
-############################################################
-if ! command -v gcloud >/dev/null 2>&1; then
-  if [[ ! -d "$HOME/google-cloud-sdk" ]]; then
-    curl -fsSL https://sdk.cloud.google.com | bash -s -- --disable-prompts --install-dir="$HOME"
-    ok "Google Cloud SDK installed"
-  else
-    ok "Google Cloud SDK directory exists"
-  fi
-else
-  ok "gcloud already installed: $(gcloud --version 2>&1 | head -1)"
-fi
-
-############################################################
-sloth_progress 50 "Installing ngrok"
-step "ngrok"
-############################################################
-if ! command -v ngrok >/dev/null 2>&1; then
-  curl -fsSL https://ngrok-agent.s3.amazonaws.com/ngrok.asc \
-    | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-  echo "deb https://ngrok-agent.s3.amazonaws.com buster main" \
-    | sudo tee /etc/apt/sources.list.d/ngrok.list >/dev/null
-  sudo apt-get update -qq
-  sudo apt-get install -y ngrok
-  ok "ngrok installed"
-else
-  ok "ngrok already installed"
-fi
-
-############################################################
-sloth_progress 53 "Installing cloudflared"
-step "cloudflared"
-############################################################
-if ! command -v cloudflared >/dev/null 2>&1; then
-  curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg \
-    | sudo gpg --dearmor --yes -o /usr/share/keyrings/cloudflare-main.gpg
-  echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared $(lsb_release -cs) main" \
-    | sudo tee /etc/apt/sources.list.d/cloudflared.list >/dev/null
-  sudo apt-get update -qq
-  sudo apt-get install -y cloudflared
-  ok "cloudflared installed"
-else
-  ok "cloudflared already installed"
-fi
-
-############################################################
-sloth_progress 56 "Installing localtunnel"
+sloth_progress 58 "Installing localtunnel"
 step "localtunnel"
 ############################################################
 if ! command -v lt >/dev/null 2>&1; then
@@ -255,7 +208,7 @@ else
 fi
 
 ############################################################
-sloth_progress 58 "Linking dotfiles"
+sloth_progress 60 "Linking dotfiles"
 step "Symlink dotfiles"
 ############################################################
 
@@ -293,7 +246,7 @@ ln -sf "$SCRIPT_DIR/claude/statusline/ctx_monitor.js" "$HOME/.claude/statusline/
 ok "Linked Claude config"
 
 ############################################################
-sloth_progress 60 "Configuring shell"
+sloth_progress 62 "Configuring shell"
 step "Disable Ubuntu default MOTD"
 ############################################################
 # Disable PAM motd entirely (the source of all default MOTD output)
@@ -312,7 +265,7 @@ sudo sed -i 's/^ENABLED=.*/ENABLED=0/' /etc/default/motd-news 2>/dev/null || tru
 ok "Ubuntu default MOTD disabled"
 
 ############################################################
-sloth_progress 62 "Configuring SSH"
+sloth_progress 64 "Configuring SSH"
 step "SSH config for GitHub"
 ############################################################
 SSH_CONFIG="$HOME/.ssh/config"
@@ -337,7 +290,7 @@ else
 fi
 
 ############################################################
-sloth_progress 63 "Setting default shell"
+sloth_progress 65 "Setting default shell"
 step "Set default shell to zsh"
 ############################################################
 if [[ "$SHELL" != "$(which zsh)" ]]; then
