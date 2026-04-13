@@ -272,6 +272,8 @@ step "MOTD"
 sudo chmod -x /etc/update-motd.d/* 2>/dev/null || true
 sudo cp "$SCRIPT_DIR/motd.sh" /etc/update-motd.d/99-lopay
 sudo chmod +x /etc/update-motd.d/99-lopay
+# Suppress Ubuntu's default legal notice
+sudo truncate -s 0 /etc/legal 2>/dev/null || true
 ok "MOTD installed"
 
 ############################################################

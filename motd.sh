@@ -68,9 +68,9 @@ fi
 
 printf "  Setup checklist:\n\n"
 
-$git_ok  && printf "  ${CHECK}  Git identity\n"            || printf "  ${CROSS}  Git identity not set\n"
+$gh_ok   && printf "  ${CHECK}  GitHub authenticated\n"     || printf "  ${CROSS}  GitHub not authenticated\n"
 $ssh_ok  && printf "  ${CHECK}  SSH key on GitHub\n"       || printf "  ${CROSS}  SSH key not on GitHub\n"
-$gh_ok   && printf "  ${CHECK}  GitHub CLI authenticated\n" || printf "  ${CROSS}  GitHub CLI not authenticated\n"
+$git_ok  && printf "  ${CHECK}  Git identity configured\n" || printf "  ${CROSS}  Git identity not set\n"
 $repos_ok && printf "  ${CHECK}  Repos cloned\n"            || printf "  ${CROSS}  Repos not cloned\n"
 
 printf "\n  Run ${BOLD}lpy init${RESET} to finish setup.\n"

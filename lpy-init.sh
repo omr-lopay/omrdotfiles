@@ -58,97 +58,91 @@ printf "\n"
 
 printf "  ${_BOLD}Phase 1: Get Connected${_RESET}\n\n"
 
-# ── Step 1: Git identity ──────────────────────────────────
+# ── Step 1: GitHub auth (handles SSH key + CLI in one go) ─
 
-printf "  ${_BOLD}[1/7]${_RESET} Git identity\n"
+printf "  ${_BOLD}[1/5]${_RESET} GitHub authentication\n"
+
+if _init_has_gh_auth && _init_has_github_ssh; then
+  printf "        ${_check}  Already authenticated (CLI + SSH)\n\n"
+else
+  printf "        ${_DIM}This will authenticate the GitHub CLI and set up your SSH key.${_RESET}\n"
+  printf "        ${_DIM}When prompted, choose: SSH as the protocol, and upload your key.${_RESET}\n\n"
+  gh auth login -p ssh
+  echo
+
+  if _init_has_gh_auth; then
+    printf "        ${_check}  GitHub CLI authenticated\n"
+
+    # Verify SSH is working after auth
+    if _init_has_github_ssh; then
+      printf "        ${_check}  SSH key verified\n\n"
+    else
+      printf "        ${_DIM}SSH verification pending — this is normal, it may take a moment${_RESET}\n\n"
+    fi
+  else
+    printf "        ${_cross}  Auth not completed — run ${_BOLD}lpy init${_RESET} later to retry\n\n"
+  fi
+fi
+
+# ── Step 2: Git identity (pulled from GitHub account) ────
+
+printf "  ${_BOLD}[2/5]${_RESET} Git identity\n"
 
 if _init_has_git_identity; then
   local _cur_name="$(git config --global user.name)"
   local _cur_email="$(git config --global user.email)"
   printf "        ${_check}  ${_cur_name} <${_cur_email}>\n\n"
 else
-  local _git_name _git_email
+  local _git_name="" _git_email=""
 
-  printf "        Your name: "
-  read -r _git_name
-  while [[ -z "$_git_name" ]]; do
-    printf "        Name is required: "
+  # Try to pull from GitHub if authenticated
+  if _init_has_gh_auth; then
+    _git_name="$(gh api user --jq '.name // empty' 2>/dev/null)"
+    _git_email="$(gh api user/emails --jq '[.[] | select(.primary)][0].email // empty' 2>/dev/null)"
+
+    if [[ -n "$_git_name" && -n "$_git_email" ]]; then
+      printf "        ${_DIM}Found from your GitHub account:${_RESET}\n"
+      printf "        ${_BOLD}${_git_name}${_RESET} <${_git_email}>\n\n"
+
+      local _confirm
+      printf "        Use this? [Y/n]: "
+      read -r _confirm
+      case "$_confirm" in
+        [Nn])
+          _git_name=""
+          _git_email=""
+          ;;
+      esac
+    fi
+  fi
+
+  # Fall back to manual entry if we couldn't get from GitHub
+  if [[ -z "$_git_name" ]]; then
+    printf "        Your name: "
     read -r _git_name
-  done
+    while [[ -z "$_git_name" ]]; do
+      printf "        Name is required: "
+      read -r _git_name
+    done
+  fi
 
-  printf "        Your email: "
-  read -r _git_email
-  while [[ -z "$_git_email" ]]; do
-    printf "        Email is required: "
+  if [[ -z "$_git_email" ]]; then
+    printf "        Your email: "
     read -r _git_email
-  done
+    while [[ -z "$_git_email" ]]; do
+      printf "        Email is required: "
+      read -r _git_email
+    done
+  fi
 
   git config --global user.name "$_git_name"
   git config --global user.email "$_git_email"
   printf "        ${_check}  Set to ${_git_name} <${_git_email}>\n\n"
 fi
 
-# ── Step 2: SSH key → GitHub ──────────────────────────────
+# ── Step 3: Clone repos ──────────────────────────────────
 
-printf "  ${_BOLD}[2/7]${_RESET} SSH key\n"
-
-if _init_has_github_ssh; then
-  printf "        ${_check}  SSH key verified with GitHub\n\n"
-else
-  local _pubkey_path="$HOME/.ssh/id_ed25519.pub"
-
-  if [[ ! -f "$_pubkey_path" ]]; then
-    printf "        ${_cross}  No SSH key found at ${_pubkey_path}\n"
-    printf "        Run: ${_BOLD}ssh-keygen -t ed25519${_RESET}\n\n"
-  else
-    printf "\n        Your public key:\n"
-    printf "        ${_DIM}────────────────────────────────────────${_RESET}\n"
-    printf "        "
-    cat "$_pubkey_path"
-    printf "        ${_DIM}────────────────────────────────────────${_RESET}\n\n"
-    printf "        1. Copy the key above\n"
-    printf "        2. Go to: ${_BOLD}https://github.com/settings/ssh/new${_RESET}\n"
-    printf "        3. Paste it and save\n\n"
-    printf "        Press ${_BOLD}Enter${_RESET} when done (or ${_DIM}s${_RESET} to skip)... "
-
-    local _ssh_answer
-    read -r _ssh_answer
-
-    if [[ "$_ssh_answer" == "s" || "$_ssh_answer" == "S" ]]; then
-      printf "        ${_DIM}Skipped — run 'lpy init' later to retry${_RESET}\n\n"
-    else
-      printf "        Verifying... "
-      if _init_has_github_ssh; then
-        printf "${_check}  Verified!\n\n"
-      else
-        printf "${_cross}  Could not verify (this is OK — it may take a moment)\n"
-        printf "        ${_DIM}You can verify later with: ssh -T git@github.com${_RESET}\n\n"
-      fi
-    fi
-  fi
-fi
-
-# ── Step 3: GitHub CLI auth ───────────────────────────────
-
-printf "  ${_BOLD}[3/7]${_RESET} GitHub CLI\n"
-
-if _init_has_gh_auth; then
-  printf "        ${_check}  Already authenticated\n\n"
-else
-  printf "        Let's authenticate the GitHub CLI.\n\n"
-  gh auth login
-  echo
-
-  if _init_has_gh_auth; then
-    printf "        ${_check}  GitHub CLI authenticated\n\n"
-  else
-    printf "        ${_cross}  Auth not completed — run ${_BOLD}gh auth login${_RESET} later\n\n"
-  fi
-fi
-
-# ── Step 4: Clone repos ──────────────────────────────────
-
-printf "  ${_BOLD}[4/7]${_RESET} Repos\n"
+printf "  ${_BOLD}[3/5]${_RESET} Repos\n"
 
 if _init_has_repos; then
   printf "        ${_check}  Already cloned (~/code/lopay-api)\n\n"
@@ -178,9 +172,9 @@ printf "  ${_DIM}─────────────────────
 
 printf "  ${_BOLD}Phase 2: Personalise Your Terminal${_RESET}\n\n"
 
-# ── Step 5: Prompt style ──────────────────────────────────
+# ── Step 4: Prompt style ──────────────────────────────────
 
-printf "  ${_BOLD}[5/7]${_RESET} Prompt style\n\n"
+printf "  ${_BOLD}[4/5]${_RESET} Prompt style\n\n"
 printf "        ${_BOLD}[1]${_RESET} Minimal\n"
 printf "            ${_YELLOW}~/code/lopay-api${_RESET} %%\n\n"
 printf "        ${_BOLD}[2]${_RESET} Standard\n"
@@ -200,24 +194,25 @@ case "$_prompt_choice" in
 esac
 printf "        ${_check}  ${_lpy_prompt_val}\n\n"
 
-# ── Step 6: Shell enhancements ────────────────────────────
+# ── Step 5: Shell enhancements + git shortcuts ───────────
 
-printf "  ${_BOLD}[6/7]${_RESET} Shell enhancements\n"
+printf "  ${_BOLD}[5/5]${_RESET} Shell enhancements\n"
 printf "        ${_DIM}Enter numbers separated by spaces, or 'all' for everything${_RESET}\n\n"
-printf "        ${_BOLD}[1]${_RESET} bat     — syntax-highlighted cat replacement\n"
-printf "        ${_BOLD}[2]${_RESET} eza     — modern ls with colors and grouping\n"
-printf "        ${_BOLD}[3]${_RESET} icons   — file type icons in eza ${_DIM}(needs Nerd Font)${_RESET}\n"
-printf "        ${_BOLD}[4]${_RESET} zsh-hl  — syntax highlighting as you type\n\n"
+printf "        ${_BOLD}[1]${_RESET} bat         — syntax-highlighted cat replacement\n"
+printf "        ${_BOLD}[2]${_RESET} eza         — modern ls with colors and grouping\n"
+printf "        ${_BOLD}[3]${_RESET} eza icons   — file type icons ${_DIM}(needs Nerd Font)${_RESET}\n"
+printf "        ${_BOLD}[4]${_RESET} zsh-hl      — syntax highlighting as you type\n"
+printf "        ${_BOLD}[5]${_RESET} git aliases — gs, gc, gp, gl, gcof, grf, glf, ...\n\n"
 
 local _enhance_choice
-printf "        Choice [1 2 4]: "
+printf "        Choice [1 2 4 5]: "
 read -r _enhance_choice
-[[ -z "$_enhance_choice" ]] && _enhance_choice="1 2 4"
+[[ -z "$_enhance_choice" ]] && _enhance_choice="1 2 4 5"
 
-local _lpy_bat=0 _lpy_eza=0 _lpy_icons=0 _lpy_syntax=0
+local _lpy_bat=0 _lpy_eza=0 _lpy_icons=0 _lpy_syntax=0 _lpy_git_aliases=0 _lpy_git_fzf=0
 
 if [[ "$_enhance_choice" == "all" ]]; then
-  _lpy_bat=1; _lpy_eza=1; _lpy_icons=1; _lpy_syntax=1
+  _lpy_bat=1; _lpy_eza=1; _lpy_icons=1; _lpy_syntax=1; _lpy_git_aliases=1; _lpy_git_fzf=1
 else
   for _n in ${=_enhance_choice}; do
     case "$_n" in
@@ -225,40 +220,21 @@ else
       2) _lpy_eza=1 ;;
       3) _lpy_icons=1 ;;
       4) _lpy_syntax=1 ;;
+      5) _lpy_git_aliases=1; _lpy_git_fzf=1 ;;
     esac
   done
 fi
 
 local _enhance_summary=""
-(( _lpy_bat ))    && _enhance_summary="${_enhance_summary}bat, "
-(( _lpy_eza ))    && _enhance_summary="${_enhance_summary}eza, "
-(( _lpy_icons ))  && _enhance_summary="${_enhance_summary}icons, "
-(( _lpy_syntax )) && _enhance_summary="${_enhance_summary}syntax highlighting, "
+(( _lpy_bat ))         && _enhance_summary="${_enhance_summary}bat, "
+(( _lpy_eza ))         && _enhance_summary="${_enhance_summary}eza, "
+(( _lpy_icons ))       && _enhance_summary="${_enhance_summary}icons, "
+(( _lpy_syntax ))      && _enhance_summary="${_enhance_summary}syntax highlighting, "
+(( _lpy_git_aliases )) && _enhance_summary="${_enhance_summary}git aliases, "
 _enhance_summary="${_enhance_summary%, }"
 [[ -z "$_enhance_summary" ]] && _enhance_summary="none"
 
 printf "        ${_check}  ${_enhance_summary}\n\n"
-
-# ── Step 7: Git shortcuts ────────────────────────────────
-
-printf "  ${_BOLD}[7/7]${_RESET} Git shortcuts\n"
-printf "        ${_DIM}Aliases: gs (status), gc (commit), gp (push), gl (log), ...${_RESET}\n"
-printf "        ${_DIM}FZF helpers: gcof (fuzzy checkout), grf (fuzzy stage), glf (browse commits)${_RESET}\n\n"
-
-local _git_choice
-printf "        Enable? [Y/n]: "
-read -r _git_choice
-
-local _lpy_git_aliases=1 _lpy_git_fzf=1
-case "$_git_choice" in
-  [Nn]) _lpy_git_aliases=0; _lpy_git_fzf=0 ;;
-esac
-
-if (( _lpy_git_aliases )); then
-  printf "        ${_check}  aliases + fzf helpers\n\n"
-else
-  printf "        ${_check}  disabled\n\n"
-fi
 
 # ══════════════════════════════════════════════════════════
 #  Save & apply
@@ -294,17 +270,13 @@ _init_has_gh_auth && {
 local _repos_line="not cloned"
 _init_has_repos && _repos_line="~/code/lopay-api"
 
-local _git_shortcuts_line="off"
-(( _lpy_git_aliases )) && _git_shortcuts_line="aliases + fzf helpers"
-
 printf "  ${_DIM}──────────────────────────────────────────${_RESET}\n"
 printf "  ${_GREEN}${_BOLD}All done!${_RESET} Here's what we set up:\n\n"
 printf "    Git:       ${_git_id_line}\n"
 printf "    GitHub:    ${_github_line}\n"
 printf "    Repos:     ${_repos_line}\n"
 printf "    Prompt:    ${_lpy_prompt_val}\n"
-printf "    Tools:     ${_enhance_summary}\n"
-printf "    Git keys:  ${_git_shortcuts_line}\n\n"
+printf "    Tools:     ${_enhance_summary}\n\n"
 printf "  Run ${_BOLD}lpy setup${_RESET} anytime to change preferences.\n"
 printf "  Run ${_BOLD}lpy init${_RESET} to re-run this wizard.\n"
 printf "  ${_DIM}──────────────────────────────────────────${_RESET}\n\n"
