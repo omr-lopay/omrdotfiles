@@ -15,7 +15,25 @@ CROSS="${RED}✗${RESET}"
 # MOTD scripts run as root — target the login user's home
 USER_HOME="/home/ubuntu"
 
-# ── state detection ────────────────────────────────────────
+# ── banner ─────────────────────────────────────────────────
+
+echo ''
+printf "${PURPLE}"
+echo '__         ______     ______   ______     __  __    '
+echo '/\ \       /\  __ \   /\  == \ /\  __ \   /\ \_\ \   '
+echo '\ \ \____  \ \ \/\ \  \ \  _-/ \ \  __ \  \ \____ \  '
+echo ' \ \_____\  \ \_____\  \ \_\    \ \_\ \_\  \/\_____\ '
+echo '  \/_____/   \/_____/   \/_/     \/_/\/_/   \/_____/ '
+printf "${RESET}"
+echo ''
+
+# ── first login — wizard will auto-trigger, just show banner ─
+
+if [[ ! -f "$USER_HOME/.lpy-init-done" ]]; then
+  exit 0
+fi
+
+# ── subsequent logins — show checklist ─────────────────────
 
 check_git_identity() {
   local name email
@@ -36,8 +54,6 @@ check_repos() {
   [[ -d "$USER_HOME/code/lopay-api/.git" ]]
 }
 
-# ── run checks ─────────────────────────────────────────────
-
 git_ok=false;   check_git_identity && git_ok=true
 ssh_ok=false;   check_github_ssh   && ssh_ok=true
 gh_ok=false;    check_gh_auth      && gh_ok=true
@@ -47,18 +63,6 @@ all_done=true
 for v in $git_ok $ssh_ok $gh_ok $repos_ok; do
   [[ "$v" == "false" ]] && all_done=false && break
 done
-
-# ── render ─────────────────────────────────────────────────
-
-echo ''
-printf "${PURPLE}"
-echo '__         ______     ______   ______     __  __    '
-echo '/\ \       /\  __ \   /\  == \ /\  __ \   /\ \_\ \   '
-echo '\ \ \____  \ \ \/\ \  \ \  _-/ \ \  __ \  \ \____ \  '
-echo ' \ \_____\  \ \_____\  \ \_\    \ \_\ \_\  \/\_____\ '
-echo '  \/_____/   \/_____/   \/_/     \/_/\/_/   \/_____/ '
-printf "${RESET}"
-echo ''
 
 if $all_done; then
   printf "  ${GREEN}${BOLD}All set.${RESET} Happy coding!\n"
