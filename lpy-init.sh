@@ -62,27 +62,37 @@ printf "  ${_BOLD}Phase 1: Get Connected${_RESET}\n\n"
 
 printf "  ${_BOLD}[1/5]${_RESET} GitHub authentication\n"
 
-if _init_has_gh_auth && _init_has_github_ssh; then
-  printf "        ${_check}  Already authenticated (CLI + SSH)\n\n"
+if _init_has_gh_auth; then
+  printf "        ${_check}  Already authenticated\n"
 else
-  printf "        ${_DIM}This will authenticate the GitHub CLI and set up your SSH key.${_RESET}\n"
   printf "        ${_DIM}You'll get a one-time code. Press Enter, then open the URL on your laptop.${_RESET}\n\n"
-  BROWSER=echo gh auth login -p ssh -w
+  BROWSER=echo gh auth login -p ssh -w --skip-ssh-key
   echo
 
   if _init_has_gh_auth; then
     printf "        ${_check}  GitHub CLI authenticated\n"
-
-    # Verify SSH is working after auth
-    if _init_has_github_ssh; then
-      printf "        ${_check}  SSH key verified\n\n"
-    else
-      printf "        ${_DIM}SSH verification pending — this is normal, it may take a moment${_RESET}\n\n"
-    fi
   else
     printf "        ${_cross}  Auth not completed — run ${_BOLD}lpy init${_RESET} later to retry\n\n"
   fi
 fi
+
+# Upload SSH key (separate from auth — no extra prompts)
+if _init_has_gh_auth && ! _init_has_github_ssh; then
+  local _pubkey="$HOME/.ssh/id_ed25519.pub"
+  if [[ -f "$_pubkey" ]]; then
+    local _key_title="$(hostname)"
+    gh ssh-key add "$_pubkey" --title "$_key_title" 2>/dev/null && {
+      touch "$HOME/.ssh/.github_verified"
+      printf "        ${_check}  SSH key uploaded to GitHub\n"
+    } || printf "        ${_DIM}SSH key may already be on GitHub${_RESET}\n"
+  fi
+fi
+
+if _init_has_github_ssh; then
+  printf "        ${_check}  SSH key verified\n"
+fi
+
+echo
 
 # ── Step 2: Git identity (pulled from GitHub account) ────
 
