@@ -66,8 +66,8 @@ if _init_has_gh_auth && _init_has_github_ssh; then
   printf "        ${_check}  Already authenticated (CLI + SSH)\n\n"
 else
   printf "        ${_DIM}This will authenticate the GitHub CLI and set up your SSH key.${_RESET}\n"
-  printf "        ${_DIM}You'll get a one-time code — open the URL on your laptop to finish.${_RESET}\n\n"
-  BROWSER=: gh auth login -p ssh -w
+  printf "        ${_DIM}You'll get a one-time code. Press Enter, then open the URL on your laptop.${_RESET}\n\n"
+  BROWSER=echo gh auth login -p ssh -w
   echo
 
   if _init_has_gh_auth; then
