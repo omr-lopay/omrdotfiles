@@ -72,7 +72,7 @@ else
   if _init_has_gh_auth; then
     printf "        ${_check}  GitHub CLI authenticated\n"
   else
-    printf "        ${_cross}  Auth not completed — run ${_BOLD}lpy init${_RESET} later to retry\n\n"
+    printf "        ${_cross}  Auth not completed — run ${_BOLD}sloth init${_RESET} later to retry\n\n"
   fi
 fi
 
@@ -275,7 +275,7 @@ _init_has_gh_auth && {
   [[ -n "$_github_line" ]] && _github_line="${_github_line} + "
   _github_line="${_github_line}CLI"
 }
-[[ -z "$_github_line" ]] && _github_line="incomplete — run lpy init to retry"
+[[ -z "$_github_line" ]] && _github_line="incomplete — run sloth init to retry"
 
 local _repos_line="not cloned"
 _init_has_repos && _repos_line="~/code/lopay-api"
@@ -287,7 +287,7 @@ printf "    GitHub:    ${_github_line}\n"
 printf "    Repos:     ${_repos_line}\n"
 printf "    Prompt:    ${_lpy_prompt_val}\n"
 printf "    Tools:     ${_enhance_summary}\n\n"
-printf "  Run ${_BOLD}lpy setup${_RESET} anytime to change preferences.\n"
+printf "  Run ${_BOLD}sloth setup${_RESET} anytime to change preferences.\n"
 printf "  Run ${_BOLD}lpy init${_RESET} to re-run this wizard.\n"
 printf "  ${_DIM}──────────────────────────────────────────${_RESET}\n\n"
 

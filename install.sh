@@ -426,4 +426,7 @@ else
   ok "zsh is already the default shell"
 fi
 
+# Mark install as complete (used by AMI to skip re-install)
+touch "$HOME/.install-done"
+
 printf "\n${BOLD}${GREEN}Done.${RESET} Open a new shell or run: ${BOLD}exec zsh${RESET}\n"

@@ -45,9 +45,17 @@ gh auth status >/dev/null 2>&1 && _motd_gh_ok=true
 # Repos
 [[ -d "$HOME/code/lopay-api/.git" ]] && _motd_repos_ok=true
 
+local _motd_tunnel=""
+[[ -f "$HOME/.tunnel-url" ]] && _motd_tunnel=$(cat "$HOME/.tunnel-url")
+
 if $_motd_git_ok && $_motd_ssh_ok && $_motd_gh_ok && $_motd_repos_ok; then
   printf "  ${_MOTD_GREEN}${_MOTD_BOLD}All set.${_MOTD_RESET} Happy coding!\n"
   echo ''
+  if [[ -n "$_motd_tunnel" ]]; then
+    printf "  ${_MOTD_BOLD}HTTPS Tunnel${_MOTD_RESET}  ${_motd_tunnel}\n"
+    printf "  ${_MOTD_RESET}Run ${_MOTD_BOLD}sloth tunnel${_MOTD_RESET} to see all ports or expose new ones.\n"
+    echo ''
+  fi
   return 0
 fi
 
@@ -58,5 +66,5 @@ $_motd_ssh_ok  && printf "  ${_MOTD_CHECK}  SSH key on GitHub\n"       || printf
 $_motd_git_ok  && printf "  ${_MOTD_CHECK}  Git identity configured\n" || printf "  ${_MOTD_CROSS}  Git identity not set\n"
 $_motd_repos_ok && printf "  ${_MOTD_CHECK}  Repos cloned\n"            || printf "  ${_MOTD_CROSS}  Repos not cloned\n"
 
-printf "\n  Run ${_MOTD_BOLD}lpy init${_MOTD_RESET} to finish setup.\n"
+printf "\n  Run ${_MOTD_BOLD}sloth init${_MOTD_RESET} to finish setup.\n"
 echo ''
