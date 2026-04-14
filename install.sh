@@ -197,15 +197,56 @@ else
 fi
 
 ############################################################
-sloth_progress 58 "Installing localtunnel"
-step "localtunnel"
+sloth_progress 56 "Installing cloudflared"
+step "cloudflared"
 ############################################################
-if ! command -v lt >/dev/null 2>&1; then
-  npm install -g localtunnel
-  ok "localtunnel installed"
+if ! command -v cloudflared >/dev/null 2>&1; then
+  curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg \
+    | sudo gpg --dearmor --yes -o /usr/share/keyrings/cloudflare-main.gpg
+  echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared $(lsb_release -cs) main" \
+    | sudo tee /etc/apt/sources.list.d/cloudflared.list >/dev/null
+  sudo apt-get update -qq
+  sudo apt-get install -y cloudflared
+  ok "cloudflared installed"
 else
-  ok "localtunnel already installed"
+  ok "cloudflared already installed"
 fi
+
+############################################################
+sloth_progress 57 "Installing Caddy"
+step "Caddy"
+############################################################
+if ! command -v caddy >/dev/null 2>&1; then
+  sudo apt-get install -y debian-keyring debian-archive-keyring apt-transport-https >/dev/null 2>&1
+  curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key | sudo gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+  echo "deb [signed-by=/usr/share/keyrings/caddy-stable-archive-keyring.gpg] https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main" \
+    | sudo tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
+  sudo apt-get update -qq
+  sudo apt-get install -y caddy
+  ok "Caddy installed"
+else
+  ok "Caddy already installed"
+fi
+
+# Configure Caddy as a port router
+sudo tee /etc/caddy/Caddyfile > /dev/null <<'CADDYEOF'
+:8888 {
+  handle_path /:3000/* {
+    reverse_proxy localhost:3000
+  }
+  handle_path /:3029/* {
+    reverse_proxy localhost:3029
+  }
+  handle_path /:4200/* {
+    reverse_proxy localhost:4200
+  }
+  handle {
+    reverse_proxy localhost:8080
+  }
+}
+CADDYEOF
+sudo systemctl restart caddy
+ok "Caddy configured as port router on :8888"
 
 ############################################################
 sloth_progress 48 "Installing PostgreSQL"
